@@ -55,16 +55,16 @@ testDat_clean = testDat_clean[-c(1:6)]
 ```
 
 ###Machine learning
-Now we learn on the training data and check against the cross validation set get a sense of accuracy for our model.  Since this is a classificaiton problem we are going to use classification and regression tree model (CART).  The decision tree is higlighted in the provided figure. The accuracy obtained from our confusion matrix is a measure of our out of sample error.
+Now we learn on the training data and check against the cross validation set get a sense of accuracy for our model.  Since this is a classificaiton problem we are going to use Recursive Partitioning and regression tree.  The decision tree is higlighted in the provided figure. The accuracy obtained from our confusion matrix is a measure of our out of sample error.
 ```{r machineLearning, cache=TRUE}
-  ForestTrain <- train(classe ~ . , training_clean, method="rpart")
-  fancyRpartPlot(ForestTrain$finalModel)
-  confusionMatrix(predict(ForestTrain, crossValid_clean), crossValid$classe)
+  ForestTrain <- rpart(classe ~ ., training_clean, method="class")
+  fancyRpartPlot(ForestTrain)
+  confusionMatrix(predict(ForestTrain, crossValid_clean, type="class"), crossValid$classe)
 ```
 
 ###Prediction of Unkowns
 Finally we want to predict the 20 cases from the test data provided.  They don't give us the classe so we don't know how we did!
 ```{r predictTest, cache=TRUE}
-predict(ForestTrain, testDat_clean)
+predict(ForestTrain, testDat_clean, type="class")
 ```
 

@@ -1,0 +1,70 @@
+---
+title: "Practical_Machine_Learning"
+author: "Saurabh Gombar"
+date: "February 13, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Assignment Summary
+The goal of the assignment is to use machine learning to predict how well a user doing an exercise.  The "classe" holds the true outcome with the remaining features used to predict the outcome.  Some of the features need to be removed because they are indeices, times, or other variables that are meta data instead of data related to the actual exercise.  We will use a CART model for our prediction and accuracy in a cross validation set as a surrogate out of sample error.
+
+### Load Essential Libraries
+```{r loadLibraries, cache=TRUE, warning=FALSE}
+  library(ggplot2)
+  library(caret)
+  library(rattle)
+```
+
+### Read training and test data
+Partition the training set into training and cross-validation.  The testData will be used only after the model is trained and validated (not to mention it doesn't have the classe variable anyway!).
+```{r readData, cache=TRUE}
+set.seed(1000)
+trainDat <- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"), na.strings=c("NA","#DIV/0!",""))
+testDat <- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"), na.strings=c("NA","#DIV/0!",""))
+
+dataSplit <- createDataPartition(y=trainDat$classe, p=0.7, list=FALSE )
+training <- trainDat[dataSplit,]
+crossValid <- trainDat[-dataSplit,]
+```
+
+### Feature Selection
+We want to remove features that are unlikely to improve predictions and instead just going to increase the overall variance of the model.  To do this ware going to:
+A) remove the features with near zero variance
+B) Remove the features where >95% of the values are NA
+C) Remove the features that are meta data instead of data from the activity iteslf (indices, time-stamps, users, etc...the first 6 after cleaning.
+```{r featureSelection, cache=TRUE}
+omitCols <- nearZeroVar(training)
+
+training_clean <- training[-omitCols]
+crossValid_clean <- crossValid[-omitCols]
+testDat_clean <- testDat[-omitCols]
+
+hiNAList <- sapply(as.data.frame(sapply(training_clean, is.na)), sum)/length(training_clean[,1])
+colToKeep <- as.logical(hiNAList < 0.95)
+training_clean = training_clean[colToKeep]
+crossValid_clean = crossValid_clean[colToKeep]
+testDat_clean = testDat_clean[colToKeep]
+
+training_clean = training_clean[-c(1:6)]
+crossValid_clean = crossValid_clean[-c(1:6)]
+testDat_clean = testDat_clean[-c(1:6)]
+```
+
+###Machine learning
+Now we learn on the training data and check against the cross validation set get a sense of accuracy for our model.  Since this is a classificaiton problem we are going to use classification and regression tree model (CART).  The decision tree is higlighted in the provided figure. The accuracy obtained from our confusion matrix is a measure of our out of sample error.
+```{r machineLearning, cache=TRUE}
+  ForestTrain <- train(classe ~ . , training_clean, method="rpart")
+  fancyRpartPlot(ForestTrain$finalModel)
+  confusionMatrix(predict(ForestTrain, crossValid_clean), crossValid$classe)
+```
+
+###Prediction of Unkowns
+Finally we want to predict the 20 cases from the test data provided.  They don't give us the classe so we don't know how we did!
+```{r predictTest, cache=TRUE}
+predict(ForestTrain, testDat_clean)
+```
+
